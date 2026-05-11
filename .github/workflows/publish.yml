@@ -33,6 +33,6 @@ jobs:
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Publishing $VERSION with dist-tag $TAG"
-      - run: npm publish --provenance --access public --tag ${{ steps.tag.outputs.tag }}
+      - run: npm publish --access public --tag ${{ steps.tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

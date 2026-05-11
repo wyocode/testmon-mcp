@@ -22,6 +22,17 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
-      - run: npm publish --provenance --access public
+      - name: Determine npm dist-tag
+        id: tag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *-alpha* ]]; then TAG=alpha
+          elif [[ "$VERSION" == *-beta* ]]; then TAG=beta
+          elif [[ "$VERSION" == *-rc* ]]; then TAG=next
+          else TAG=latest
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION with dist-tag $TAG"
+      - run: npm publish --provenance --access public --tag ${{ steps.tag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

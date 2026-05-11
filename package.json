@@ -44,5 +44,17 @@
     "uat",
     "claude",
     "copilot"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wyocode/testmon-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wyocode/testmon-mcp/issues"
+  },
+  "homepage": "https://github.com/wyocode/testmon-mcp#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

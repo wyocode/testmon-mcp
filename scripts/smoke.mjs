@@ -165,8 +165,26 @@ async function run() {
       data_base64: png1x1,
     }).catch((e) => { fail("testcase_attachment_upload", e); return ""; });
     const attId = jsonOut(attText)?.data?.id;
-    attId ? pass(`testcase_attachment_upload -> attachment ${attId}`)
-          : fail("testcase_attachment_upload", "no attachment id");
+    attId ? pass(`testcase_attachment_upload (base64) -> attachment ${attId}`)
+          : fail("testcase_attachment_upload (base64)", "no attachment id");
+
+    // also exercise the local-path upload mode
+    if (createdIds[1]) {
+      const fs = await import("node:fs/promises");
+      const os = await import("node:os");
+      const path = await import("node:path");
+      const tmpPath = path.join(os.tmpdir(), `mcp-smoke-${stamp}.png`);
+      await fs.writeFile(tmpPath, Buffer.from(png1x1, "base64"));
+      const pathText = await call("testmonitor_testcase_attachment_upload", {
+        testCaseId: createdIds[1],
+        path: tmpPath,
+      }).catch((e) => { fail("testcase_attachment_upload (path)", e); return ""; });
+      const pathAttId = jsonOut(pathText)?.data?.id;
+      pathAttId ? pass(`testcase_attachment_upload (path) -> attachment ${pathAttId}`)
+                : fail("testcase_attachment_upload (path)", "no attachment id");
+      await fs.unlink(tmpPath).catch(() => {});
+    }
+
     await callShow("testmonitor_testcase_attachments_list", { testCaseId: createdIds[0] });
   }
 

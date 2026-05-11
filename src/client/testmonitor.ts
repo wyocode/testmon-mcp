@@ -194,11 +194,12 @@ export class TestMonitorClient {
   }
 
   // ---- Attachments -------------------------------------------------------
-  /** Resolve a file source (base64 data or URL) into an in-memory MultipartFile. */
+  /** Resolve a file source (base64 data, local path, or URL) into an in-memory MultipartFile. */
   async resolveAttachment(input: {
     filename?: string;
     mime_type?: string;
     data_base64?: string;
+    path?: string;
     url?: string;
   }): Promise<MultipartFile> {
     if (input.data_base64) {
@@ -207,6 +208,15 @@ export class TestMonitorClient {
         contentType: input.mime_type ?? "application/octet-stream",
         data: Buffer.from(input.data_base64, "base64"),
       };
+    }
+    if (input.path) {
+      const { readFile } = await import("node:fs/promises");
+      const { basename, extname } = await import("node:path");
+      const data = await readFile(input.path);
+      const name = input.filename ?? basename(input.path);
+      const ext = extname(input.path).toLowerCase();
+      const ct = input.mime_type ?? guessMimeFromExt(ext);
+      return { filename: name, contentType: ct, data };
     }
     if (input.url) {
       const res = await fetch(input.url);
@@ -223,7 +233,7 @@ export class TestMonitorClient {
         "application/octet-stream";
       return { filename: guessedName, contentType: ct, data: buf };
     }
-    throw new Error("Provide either data_base64 or url for the attachment.");
+    throw new Error("Provide one of data_base64, path, or url for the attachment.");
   }
   uploadTestCaseAttachment(testCaseId: number, file: MultipartFile) {
     return this.http.multipart<Envelope<Attachment>>(
@@ -579,4 +589,22 @@ export interface Attachment {
   size?: number;
   url?: string;
   thumbnail_url?: string;
+}
+
+
+function guessMimeFromExt(ext: string): string {
+  const map: Record<string, string> = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.pdf': 'application/pdf',
+    '.txt': 'text/plain',
+    '.json': 'application/json',
+    '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
+  };
+  return map[ext] ?? 'application/octet-stream';
 }

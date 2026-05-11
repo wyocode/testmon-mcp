@@ -653,9 +653,11 @@ export function buildServer(opts: BuildOptions): McpServer {
       filename: z.string().optional()
         .describe("Filename for the upload (e.g. 'login-button.png')."),
       mime_type: z.string().optional()
-        .describe("MIME type, e.g. 'image/png'. Inferred from URL header if omitted."),
+        .describe("MIME type, e.g. 'image/png'. Inferred from extension/URL when omitted."),
       data_base64: z.string().optional()
         .describe("Raw file bytes encoded as base64 (preferred for AI-generated images)."),
+      path: z.string().optional()
+        .describe("Absolute local file path the server should read (e.g. 'C:/screenshots/login.png'). Use when the user already has the image on disk."),
       url: z.string().url().optional()
         .describe("Public URL the server should fetch the file from."),
     };
@@ -665,7 +667,7 @@ export function buildServer(opts: BuildOptions): McpServer {
       {
         title: "Upload test case attachment",
         description:
-          "Attach an image or file to a test case (e.g. a screenshot showing what to click in a step). Provide either `data_base64` or `url`.",
+          "Attach an image or file to a test case (e.g. a screenshot showing what to click in a step). Provide one of `data_base64`, `path` (local file on the MCP host), or `url`.",
         annotations: { destructiveHint: false, idempotentHint: false },
         inputSchema: {
           testCaseId: z.number().int().positive(),
@@ -683,7 +685,7 @@ export function buildServer(opts: BuildOptions): McpServer {
       {
         title: "Upload test result attachment",
         description:
-          "Attach an image or file (e.g. failure screenshot) to an existing test result. Provide either `data_base64` or `url`. Also required to submit a 'Fail' result on tenants that mandate attachments.",
+          "Attach an image or file (e.g. failure screenshot) to an existing test result. Provide one of `data_base64`, `path`, or `url`. Also required to submit a 'Fail' result on tenants that mandate attachments.",
         annotations: { destructiveHint: false, idempotentHint: false },
         inputSchema: {
           testResultId: z.number().int().positive(),

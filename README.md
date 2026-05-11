@@ -143,10 +143,10 @@ All tools are prefixed with `testmonitor_`.
 
 ### Writes (hidden when `TESTMONITOR_READONLY=true`)
 - `testcases_create`, `testcases_bulk_create`, `testcases_update`
-- `testcase_attachment_upload` — attach an image to a test case (accepts `data_base64` or `url`).
+- `testcase_attachment_upload` — attach an image to a test case. Accepts `data_base64` (AI-generated images), `path` (local file on the MCP host), or `url` (public link).
 - `testruns_create`
 - `testresults_submit`
-- `testresult_attachment_upload` — attach evidence to a result (also required to submit a `Fail` result on tenants that mandate attachments).
+- `testresult_attachment_upload` — attach evidence to a result (`data_base64`, `path`, or `url`). Also required to submit a `Fail` result on tenants that mandate attachments.
 - `issues_create`
 - `requirements_create` (auto-resolves a default requirement type).
 

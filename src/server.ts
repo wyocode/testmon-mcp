@@ -57,19 +57,40 @@ export function buildServer(opts: BuildOptions): McpServer {
   // READ TOOLS
   // ========================================================================
 
+  /**
+   * Reusable pagination input fields appended to every list tool. By default
+   * the server fetches all pages and returns the merged result; setting `page`
+   * returns just that single page.
+   */
+  const pageFields = {
+    page: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("1-based page number. Omit to auto-fetch all pages."),
+    perPage: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .optional()
+      .describe("Page size (max 100). Default 100."),
+  };
+
   server.registerTool(
     "testmonitor_projects_list",
     {
       title: "List projects",
-      description: "List TestMonitor projects accessible to the token.",
+      description:
+        "List TestMonitor projects accessible to the token. Auto-paginates by default.",
       inputSchema: {
         query: z.string().optional(),
-        page: z.number().int().positive().optional(),
-        limit: z.number().int().positive().max(100).optional(),
+        ...pageFields,
       },
     },
-    wrap(async ({ query, page, limit }) =>
-      client.listProjects({ query, page, limit }),
+    wrap(async ({ query, page, perPage }) =>
+      client.listProjects({ query, page, perPage }),
     ),
   );
 
@@ -87,10 +108,15 @@ export function buildServer(opts: BuildOptions): McpServer {
     "testmonitor_milestones_list",
     {
       title: "List milestones",
-      description: "List milestones for a project.",
-      inputSchema: { projectId: z.number().int().positive().optional() },
+      description: "List milestones for a project. Auto-paginates by default.",
+      inputSchema: {
+        projectId: z.number().int().positive().optional(),
+        ...pageFields,
+      },
     },
-    wrap(async ({ projectId: id }) => client.listMilestones(projectId(id))),
+    wrap(async ({ projectId: id, page, perPage }) =>
+      client.listMilestones(projectId(id), { page, perPage }),
+    ),
   );
 
   server.registerTool(
@@ -99,9 +125,14 @@ export function buildServer(opts: BuildOptions): McpServer {
       title: "List milestone types",
       description:
         "List configured milestone types for a project (lookup for creating milestones).",
-      inputSchema: { projectId: z.number().int().positive().optional() },
+      inputSchema: {
+        projectId: z.number().int().positive().optional(),
+        ...pageFields,
+      },
     },
-    wrap(async ({ projectId: id }) => client.listMilestoneTypes(projectId(id))),
+    wrap(async ({ projectId: id, page, perPage }) =>
+      client.listMilestoneTypes(projectId(id), { page, perPage }),
+    ),
   );
 
   server.registerTool(
@@ -110,10 +141,13 @@ export function buildServer(opts: BuildOptions): McpServer {
       title: "List test result statuses",
       description:
         "List the test_result_status values configured for a project (passed, failed, blocked, etc.).",
-      inputSchema: { projectId: z.number().int().positive().optional() },
+      inputSchema: {
+        projectId: z.number().int().positive().optional(),
+        ...pageFields,
+      },
     },
-    wrap(async ({ projectId: id }) =>
-      client.listTestResultStatuses(projectId(id)),
+    wrap(async ({ projectId: id, page, perPage }) =>
+      client.listTestResultStatuses(projectId(id), { page, perPage }),
     ),
   );
 
@@ -122,10 +156,13 @@ export function buildServer(opts: BuildOptions): McpServer {
     {
       title: "List issue categories",
       description: "Lookup values used when creating issues.",
-      inputSchema: { projectId: z.number().int().positive().optional() },
+      inputSchema: {
+        projectId: z.number().int().positive().optional(),
+        ...pageFields,
+      },
     },
-    wrap(async ({ projectId: id }) =>
-      client.listIssueCategories(projectId(id)),
+    wrap(async ({ projectId: id, page, perPage }) =>
+      client.listIssueCategories(projectId(id), { page, perPage }),
     ),
   );
 
@@ -134,9 +171,14 @@ export function buildServer(opts: BuildOptions): McpServer {
     {
       title: "List issue statuses",
       description: "Lookup values used when creating issues.",
-      inputSchema: { projectId: z.number().int().positive().optional() },
+      inputSchema: {
+        projectId: z.number().int().positive().optional(),
+        ...pageFields,
+      },
     },
-    wrap(async ({ projectId: id }) => client.listIssueStatuses(projectId(id))),
+    wrap(async ({ projectId: id, page, perPage }) =>
+      client.listIssueStatuses(projectId(id), { page, perPage }),
+    ),
   );
 
   server.registerTool(
@@ -144,23 +186,25 @@ export function buildServer(opts: BuildOptions): McpServer {
     {
       title: "List users",
       description: "List users in the TestMonitor environment.",
-      inputSchema: {},
+      inputSchema: { ...pageFields },
     },
-    wrap(async () => client.listUsers()),
+    wrap(async ({ page, perPage }) => client.listUsers({ page, perPage })),
   );
 
   server.registerTool(
     "testmonitor_requirements_list",
     {
       title: "List requirements",
-      description: "List requirements / user stories for a project.",
+      description:
+        "List requirements / user stories for a project. Auto-paginates by default so AI agents see every requirement, not just the first 15.",
       inputSchema: {
         projectId: z.number().int().positive().optional(),
         query: z.string().optional(),
+        ...pageFields,
       },
     },
-    wrap(async ({ projectId: id, query }) =>
-      client.listRequirements(projectId(id), query),
+    wrap(async ({ projectId: id, query, page, perPage }) =>
+      client.listRequirements(projectId(id), { query, page, perPage }),
     ),
   );
 
@@ -180,10 +224,13 @@ export function buildServer(opts: BuildOptions): McpServer {
     {
       title: "List requirement types",
       description: "Lookup for creating requirements.",
-      inputSchema: { projectId: z.number().int().positive().optional() },
+      inputSchema: {
+        projectId: z.number().int().positive().optional(),
+        ...pageFields,
+      },
     },
-    wrap(async ({ projectId: id }) =>
-      client.listRequirementTypes(projectId(id)),
+    wrap(async ({ projectId: id, page, perPage }) =>
+      client.listRequirementTypes(projectId(id), { page, perPage }),
     ),
   );
 
@@ -244,10 +291,10 @@ export function buildServer(opts: BuildOptions): McpServer {
       title: "List test case attachments",
       description:
         "List attachments (screenshots, reference files) attached to a test case.",
-      inputSchema: { testCaseId: z.number().int().positive() },
+      inputSchema: { testCaseId: z.number().int().positive(), ...pageFields },
     },
-    wrap(async ({ testCaseId }) =>
-      client.listTestCaseAttachments(testCaseId),
+    wrap(async ({ testCaseId, page, perPage }) =>
+      client.listTestCaseAttachments(testCaseId, { page, perPage }),
     ),
   );
 
@@ -257,10 +304,10 @@ export function buildServer(opts: BuildOptions): McpServer {
       title: "List test result attachments",
       description:
         "List attachments (e.g. failure screenshots) on a submitted test result.",
-      inputSchema: { testResultId: z.number().int().positive() },
+      inputSchema: { testResultId: z.number().int().positive(), ...pageFields },
     },
-    wrap(async ({ testResultId }) =>
-      client.listTestResultAttachments(testResultId),
+    wrap(async ({ testResultId, page, perPage }) =>
+      client.listTestResultAttachments(testResultId, { page, perPage }),
     ),
   );
 
@@ -270,10 +317,13 @@ export function buildServer(opts: BuildOptions): McpServer {
       title: "List test case folders",
       description:
         "List test case folders (the hierarchy used to organize test cases).",
-      inputSchema: { projectId: z.number().int().positive().optional() },
+      inputSchema: {
+        projectId: z.number().int().positive().optional(),
+        ...pageFields,
+      },
     },
-    wrap(async ({ projectId: id }) =>
-      client.listTestCaseFolders(projectId(id)),
+    wrap(async ({ projectId: id, page, perPage }) =>
+      client.listTestCaseFolders(projectId(id), { page, perPage }),
     ),
   );
 
@@ -281,15 +331,17 @@ export function buildServer(opts: BuildOptions): McpServer {
     "testmonitor_testcases_list",
     {
       title: "List test cases",
-      description: "List test cases, optionally filtered by folder or search.",
+      description:
+        "List test cases, optionally filtered by folder or search. Auto-paginates by default.",
       inputSchema: {
         projectId: z.number().int().positive().optional(),
         folderId: z.number().int().nonnegative().optional(),
         search: z.string().optional(),
+        ...pageFields,
       },
     },
-    wrap(async ({ projectId: id, folderId, search }) =>
-      client.listTestCases(projectId(id), { folderId, search }),
+    wrap(async ({ projectId: id, folderId, search, page, perPage }) =>
+      client.listTestCases(projectId(id), { folderId, search, page, perPage }),
     ),
   );
 
@@ -307,10 +359,15 @@ export function buildServer(opts: BuildOptions): McpServer {
     "testmonitor_testruns_list",
     {
       title: "List test runs",
-      description: "List test runs for a project.",
-      inputSchema: { projectId: z.number().int().positive().optional() },
+      description: "List test runs for a project. Auto-paginates by default.",
+      inputSchema: {
+        projectId: z.number().int().positive().optional(),
+        ...pageFields,
+      },
     },
-    wrap(async ({ projectId: id }) => client.listTestRuns(projectId(id))),
+    wrap(async ({ projectId: id, page, perPage }) =>
+      client.listTestRuns(projectId(id), { page, perPage }),
+    ),
   );
 
   server.registerTool(
@@ -327,14 +384,16 @@ export function buildServer(opts: BuildOptions): McpServer {
     "testmonitor_testresults_list",
     {
       title: "List test results",
-      description: "List test results for a run (UAT feedback).",
+      description:
+        "List test results for a run (UAT feedback). Auto-paginates by default.",
       inputSchema: {
         projectId: z.number().int().positive().optional(),
         runId: z.number().int().positive().optional(),
+        ...pageFields,
       },
     },
-    wrap(async ({ projectId: id, runId }) =>
-      client.listTestResults(projectId(id), runId),
+    wrap(async ({ projectId: id, runId, page, perPage }) =>
+      client.listTestResults(projectId(id), runId, { page, perPage }),
     ),
   );
 
@@ -342,14 +401,16 @@ export function buildServer(opts: BuildOptions): McpServer {
     "testmonitor_issues_list",
     {
       title: "List issues",
-      description: "List issues / defects in a project.",
+      description:
+        "List issues / defects in a project. Auto-paginates by default.",
       inputSchema: {
         projectId: z.number().int().positive().optional(),
         query: z.string().optional(),
+        ...pageFields,
       },
     },
-    wrap(async ({ projectId: id, query }) =>
-      client.listIssues(projectId(id), query),
+    wrap(async ({ projectId: id, query, page, perPage }) =>
+      client.listIssues(projectId(id), { query, page, perPage }),
     ),
   );
 

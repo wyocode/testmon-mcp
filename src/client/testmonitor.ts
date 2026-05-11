@@ -2,8 +2,19 @@ import { HttpClient, type MultipartFile } from "./http.js";
 import type { Config } from "../config.js";
 import type { Logger } from "../util/logger.js";
 
+export interface ListOptions {
+  /** 1-based page number. If set, only that single page is fetched. */
+  page?: number;
+  /** Page size (default 100 when auto-paginating, max 100 per TestMonitor). */
+  perPage?: number;
+}
+
 /**
  * Typed wrapper over the TestMonitor REST API (v1).
+ *
+ * List endpoints are paginated by TestMonitor (default 15 per page). When a
+ * caller does not specify `page`, this client auto-follows pages until all
+ * items are fetched (capped at `perPage * 100` items as a safety net).
  *
  * Field names follow the OpenAPI document at https://docs.testmonitor.com/openapi.yaml.
  * Where the doc is open-ended we keep payloads loose so callers can pass through
@@ -18,51 +29,71 @@ export class TestMonitorClient {
     this.http = new HttpClient(opts);
   }
 
+  /** Internal list helper: single-page if `opts.page`, otherwise fetch all pages. */
+  private list<T>(
+    path: string,
+    query: Record<string, string | number | boolean | undefined | null> | undefined,
+    opts?: ListOptions,
+  ): Promise<Paginated<T>> {
+    if (opts?.page) {
+      return this.http.json<Paginated<T>>(path, {
+        query: { ...query, page: opts.page, per_page: opts.perPage ?? 100 },
+      });
+    }
+    return this.http.paginate<T>(path, query, { perPage: opts?.perPage });
+  }
+
   // ---- Projects ----------------------------------------------------------
-  listProjects(query?: { page?: number; limit?: number; query?: string }) {
-    return this.http.json<Paginated<Project>>("/projects", { query });
+  listProjects(opts?: ListOptions & { query?: string }) {
+    return this.list<Project>("/projects", { query: opts?.query }, opts);
   }
   getProject(id: number) {
     return this.http.json<Envelope<Project>>(`/projects/${id}`);
   }
 
   // ---- Per-project lookups ----------------------------------------------
-  listMilestoneTypes(projectId: number) {
-    return this.http.json<Paginated<NamedRef>>(
-      `/project/${projectId}/milestone-types`,
+  listMilestoneTypes(projectId: number, opts?: ListOptions) {
+    return this.list<NamedRef>(`/project/${projectId}/milestone-types`, undefined, opts);
+  }
+  listTestResultStatuses(projectId: number, opts?: ListOptions) {
+    return this.list<NamedRef>(
+      "/test-result-statuses",
+      { project_id: projectId },
+      opts,
     );
   }
-  listTestResultStatuses(projectId: number) {
-    return this.http.json<Paginated<NamedRef>>("/test-result-statuses", {
-      query: { project_id: projectId },
-    });
-  }
-  listIssueCategories(projectId: number) {
-    return this.http.json<Paginated<NamedRef>>(
+  listIssueCategories(projectId: number, opts?: ListOptions) {
+    return this.list<NamedRef>(
       `/project/${projectId}/issue-categories`,
+      undefined,
+      opts,
     );
   }
-  listIssueStatuses(projectId: number) {
-    return this.http.json<Paginated<NamedRef>>(
+  listIssueStatuses(projectId: number, opts?: ListOptions) {
+    return this.list<NamedRef>(
       `/project/${projectId}/issue-statuses`,
+      undefined,
+      opts,
     );
   }
-  listIssuePriorities(projectId: number) {
-    return this.http.json<Paginated<NamedRef>>(
+  listIssuePriorities(projectId: number, opts?: ListOptions) {
+    return this.list<NamedRef>(
       `/project/${projectId}/issue-priorities`,
+      undefined,
+      opts,
     );
   }
-  listRequirementTypes(projectId: number) {
-    return this.http.json<Paginated<NamedRef>>(
+  listRequirementTypes(projectId: number, opts?: ListOptions) {
+    return this.list<NamedRef>(
       `/project/${projectId}/requirement-types`,
+      undefined,
+      opts,
     );
   }
 
   // ---- Milestones --------------------------------------------------------
-  listMilestones(projectId: number) {
-    return this.http.json<Paginated<Milestone>>("/milestones", {
-      query: { project_id: projectId },
-    });
+  listMilestones(projectId: number, opts?: ListOptions) {
+    return this.list<Milestone>("/milestones", { project_id: projectId }, opts);
   }
   createMilestone(input: {
     project_id: number;
@@ -98,8 +129,8 @@ export class TestMonitorClient {
   }
 
   // ---- Users -------------------------------------------------------------
-  listUsers() {
-    return this.http.json<Paginated<User>>("/users");
+  listUsers(opts?: ListOptions) {
+    return this.list<User>("/users", undefined, opts);
   }
   async getCurrentUserId(): Promise<number | undefined> {
     const key = "me:id";
@@ -112,10 +143,12 @@ export class TestMonitorClient {
   }
 
   // ---- Requirements ------------------------------------------------------
-  listRequirements(projectId: number, query?: string) {
-    return this.http.json<Paginated<Requirement>>("/requirements", {
-      query: { project_id: projectId, query },
-    });
+  listRequirements(projectId: number, opts?: ListOptions & { query?: string }) {
+    return this.list<Requirement>(
+      "/requirements",
+      { project_id: projectId, query: opts?.query },
+      opts,
+    );
   }
   getRequirement(id: number) {
     return this.http.json<Envelope<Requirement>>(`/requirements/${id}`);
@@ -152,9 +185,11 @@ export class TestMonitorClient {
     });
   }
   /** Get test cases linked to a requirement (each item includes latest `status`). */
-  listRequirementTestCases(requirementId: number) {
-    return this.http.json<Paginated<TestCase>>(
+  listRequirementTestCases(requirementId: number, opts?: ListOptions) {
+    return this.list<TestCase>(
       `/requirement/${requirementId}/test-cases`,
+      undefined,
+      opts,
     );
   }
 
@@ -196,9 +231,11 @@ export class TestMonitorClient {
       { file },
     );
   }
-  listTestCaseAttachments(testCaseId: number) {
-    return this.http.json<Paginated<Attachment>>(
+  listTestCaseAttachments(testCaseId: number, opts?: ListOptions) {
+    return this.list<Attachment>(
       `/test-case/${testCaseId}/attachments`,
+      undefined,
+      opts,
     );
   }
   uploadTestResultAttachment(testResultId: number, file: MultipartFile) {
@@ -207,17 +244,21 @@ export class TestMonitorClient {
       { file },
     );
   }
-  listTestResultAttachments(testResultId: number) {
-    return this.http.json<Paginated<Attachment>>(
+  listTestResultAttachments(testResultId: number, opts?: ListOptions) {
+    return this.list<Attachment>(
       `/test-result/${testResultId}/attachments`,
+      undefined,
+      opts,
     );
   }
 
   // ---- Test Case Folders (replaces deprecated Test Suites) --------------
-  listTestCaseFolders(projectId: number) {
-    return this.http.json<Paginated<TestCaseFolder>>("/test-case/folders", {
-      query: { project_id: projectId },
-    });
+  listTestCaseFolders(projectId: number, opts?: ListOptions) {
+    return this.list<TestCaseFolder>(
+      "/test-case/folders",
+      { project_id: projectId },
+      opts,
+    );
   }
   createTestCaseFolder(input: {
     project_id: number;
@@ -233,15 +274,17 @@ export class TestMonitorClient {
   // ---- Test Cases --------------------------------------------------------
   listTestCases(
     projectId: number,
-    query?: { folderId?: number; search?: string },
+    query?: { folderId?: number; search?: string } & ListOptions,
   ) {
-    return this.http.json<Paginated<TestCase>>("/test-cases", {
-      query: {
+    return this.list<TestCase>(
+      "/test-cases",
+      {
         project_id: projectId,
         test_case_folder_id: query?.folderId,
         query: query?.search,
       },
-    });
+      query,
+    );
   }
   getTestCase(id: number) {
     return this.http.json<Envelope<TestCase>>(`/test-cases/${id}`);
@@ -260,10 +303,8 @@ export class TestMonitorClient {
   }
 
   // ---- Test Runs ---------------------------------------------------------
-  listTestRuns(projectId: number) {
-    return this.http.json<Paginated<TestRun>>("/test-runs", {
-      query: { project_id: projectId },
-    });
+  listTestRuns(projectId: number, opts?: ListOptions) {
+    return this.list<TestRun>("/test-runs", { project_id: projectId }, opts);
   }
   getTestRun(id: number) {
     return this.http.json<Envelope<TestRun>>(`/test-runs/${id}`);
@@ -285,10 +326,12 @@ export class TestMonitorClient {
   }
 
   // ---- Test Results ------------------------------------------------------
-  listTestResults(projectId: number, runId?: number) {
-    return this.http.json<Paginated<TestResult>>("/test-results", {
-      query: { project_id: projectId, test_run_id: runId },
-    });
+  listTestResults(projectId: number, runId?: number, opts?: ListOptions) {
+    return this.list<TestResult>(
+      "/test-results",
+      { project_id: projectId, test_run_id: runId },
+      opts,
+    );
   }
 
   /** Submit a test result. Accepts a friendly status name (passed/failed/...)
@@ -346,10 +389,12 @@ export class TestMonitorClient {
   }
 
   // ---- Issues / Defects --------------------------------------------------
-  listIssues(projectId: number, query?: string) {
-    return this.http.json<Paginated<Issue>>("/issues", {
-      query: { project_id: projectId, query },
-    });
+  listIssues(projectId: number, opts?: ListOptions & { query?: string }) {
+    return this.list<Issue>(
+      "/issues",
+      { project_id: projectId, query: opts?.query },
+      opts,
+    );
   }
 
   /** Create an issue. Looks up category & status by name if not given as ids. */

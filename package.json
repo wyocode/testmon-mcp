@@ -1,6 +1,6 @@
 {
   "name": "@wyocode/testmon-mcp",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Model Context Protocol server for TestMonitor — author acceptance tests and read UAT feedback from Claude/Copilot.",
   "license": "MIT",
   "type": "module",

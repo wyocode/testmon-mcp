@@ -133,6 +133,52 @@ export class HttpClient {
     return url.toString();
   }
 
+  /**
+   * GET a paginated TestMonitor endpoint and follow `meta.last_page` until all
+   * results are fetched (or `maxPages` is reached). Uses `per_page` (Laravel
+   * convention) with a default of 100. The returned envelope merges all pages
+   * into a single `data` array.
+   */
+  async paginate<T>(
+    path: string,
+    query?: RequestOptions["query"],
+    opts?: { perPage?: number; maxPages?: number },
+  ): Promise<{ data: T[]; meta?: PageMeta; links?: Record<string, string> }> {
+    const perPage = opts?.perPage ?? 100;
+    const maxPages = opts?.maxPages ?? 100;
+    const all: T[] = [];
+    let page = 1;
+    let lastPage = 1;
+    let firstMeta: PageMeta | undefined;
+    let firstLinks: Record<string, string> | undefined;
+    while (page <= lastPage && page <= maxPages) {
+      const res = await this.json<{
+        data: T[];
+        meta?: PageMeta;
+        links?: Record<string, string>;
+      }>(path, {
+        query: { ...query, page, per_page: perPage },
+      });
+      all.push(...res.data);
+      if (page === 1) {
+        firstMeta = res.meta;
+        firstLinks = res.links;
+        lastPage = res.meta?.last_page ?? 1;
+      }
+      // safety: stop early if a page returns fewer than perPage when last_page
+      // isn't advertised (some endpoints omit meta).
+      if (!res.meta?.last_page && res.data.length < perPage) break;
+      page++;
+    }
+    return {
+      data: all,
+      meta: firstMeta
+        ? { ...firstMeta, current_page: 1, last_page: lastPage, total: firstMeta.total ?? all.length }
+        : { current_page: 1, last_page: lastPage, total: all.length },
+      links: firstLinks,
+    };
+  }
+
   /** POST multipart/form-data. Used for file uploads (attachments). */
   async multipart<T>(
     path: string,
@@ -165,6 +211,13 @@ export interface MultipartFile {
   filename: string;
   contentType: string;
   data: Buffer;
+}
+
+export interface PageMeta {
+  current_page?: number;
+  last_page?: number;
+  total?: number;
+  per_page?: number;
 }
 
 function buildMultipart(

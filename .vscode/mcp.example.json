@@ -1,0 +1,25 @@
+// Copy this to .vscode/mcp.json (or your client's MCP config) and replace values.
+// Option B is recommended — keep the PAT in your OS env / secret store.
+{
+  "inputs": [
+    {
+      "id": "testmonitorToken",
+      "type": "promptString",
+      "description": "TestMonitor Personal Access Token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "testmonitor": {
+      "command": "npx",
+      "args": ["-y", "@wyocode/testmon-mcp"],
+      "env": {
+        "TESTMONITOR_DOMAIN": "acme.testmonitor.com",
+        "TESTMONITOR_TOKEN": "${input:testmonitorToken}",
+        "TESTMONITOR_DEFAULT_PROJECT_ID": "1",
+        "TESTMONITOR_READONLY": "false"
+      }
+    }
+  }
+}
+

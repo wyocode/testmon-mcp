@@ -1,0 +1,48 @@
+{
+  "name": "@wyocode/testmon-mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server for TestMonitor — author acceptance tests and read UAT feedback from Claude/Copilot.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "testmon-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.0",
+    "undici": "^6.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "tsup": "^8.3.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "testmonitor",
+    "testing",
+    "acceptance-testing",
+    "uat",
+    "claude",
+    "copilot"
+  ]
+}

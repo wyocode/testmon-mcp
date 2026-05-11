@@ -1,14 +1,18 @@
 # testmon-mcp
 
+[![npm](https://img.shields.io/npm/v/@wyocode/testmon-mcp/alpha.svg)](https://www.npmjs.com/package/@wyocode/testmon-mcp)
+[![CI](https://github.com/wyocode/testmon-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/wyocode/testmon-mcp/actions/workflows/ci.yml)
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server for
 [TestMonitor](https://www.testmonitor.com/). Lets Claude, GitHub Copilot,
 Cursor, etc. **author acceptance test cases** in TestMonitor and **read back
-UAT feedback** from test runs and defects.
+UAT feedback** from test runs, requirement coverage, and defects.
 
 - Pure Node.js / TypeScript — distributed via `npx` or Docker.
 - Auth: TestMonitor Personal Access Token (Bearer).
 - Stdio transport (works with every major MCP client).
 - Read-only mode for safe shared setups.
+- 32 tools, 4 prompts, 2 resources. Supports image attachments (base64 or URL) for visual step instructions and requirement → test case coverage rollup.
 
 ## Install & run
 
@@ -120,28 +124,43 @@ docker run -i --rm \
 
 ## Tools
 
-| Tool | Read | Write |
-| --- | --- | --- |
-| `testmonitor_projects_list` / `_get` | ✓ | |
-| `testmonitor_milestones_list` | ✓ | |
-| `testmonitor_users_list` | ✓ | |
-| `testmonitor_requirements_list` | ✓ | |
-| `testmonitor_testsuites_list` / `_create` | ✓ | ✓ |
-| `testmonitor_testcases_list` / `_get` | ✓ | |
-| `testmonitor_testcases_create` / `_bulk_create` / `_update` | | ✓ |
-| `testmonitor_testruns_list` / `_get` / `_create` | ✓ | ✓ |
-| `testmonitor_testresults_list` / `_submit` | ✓ | ✓ |
-| `testmonitor_issues_list` / `_create` | ✓ | ✓ |
+All tools are prefixed with `testmonitor_`.
+
+### Reads
+- `projects_list`, `projects_get`
+- `users_list`
+- `milestones_list`, `milestone_types_list`
+- `test_result_statuses_list`
+- `issue_categories_list`, `issue_statuses_list`
+- `testcase_folders_list`
+- `testcases_list`, `testcases_get`
+- `testcase_attachments_list`
+- `testruns_list`, `testruns_get`
+- `testresults_list`, `testresult_attachments_list`
+- `issues_list`
+- `requirements_list`, `requirements_get`, `requirement_types_list`
+- `requirement_coverage` — rolls up linked test case statuses into pass/fail/not-run + a `complete` verdict.
+
+### Writes (hidden when `TESTMONITOR_READONLY=true`)
+- `testcases_create`, `testcases_bulk_create`, `testcases_update`
+- `testcase_attachment_upload` — attach an image to a test case (accepts `data_base64` or `url`).
+- `testruns_create`
+- `testresults_submit`
+- `testresult_attachment_upload` — attach evidence to a result (also required to submit a `Fail` result on tenants that mandate attachments).
+- `issues_create`
+- `requirements_create` (auto-resolves a default requirement type).
 
 ## Resources
 
-- `testmonitor://run/{runId}/report` — Markdown summary of a run (counts, failed cases).
+- `testmonitor://project/{projectId}/run/{runId}/report` — Markdown summary of a run.
+- `testmonitor://requirement/{requirementId}/coverage` — Markdown coverage report (linked test cases + verdict).
 
 ## Prompts
 
-- `generate-acceptance-tests` — turn a requirement / user story into bulk-created test cases.
-- `summarize-uat-feedback` — produce a delivery-ready UAT report from a run.
-- `triage-failed-tests` — propose defects for each failed result.
+- `generate-acceptance-tests` — turn a requirement / user story into bulk-created test cases (links them back to the requirement, asks for screenshots on UI steps).
+- `summarize-run` — produce a delivery-ready UAT report from a run.
+- `triage-failures` — propose defects for each failed result.
+- `check-requirement-coverage` — read the coverage resource and decide whether a requirement is met.
 
 ## Develop
 

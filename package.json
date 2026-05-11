@@ -1,6 +1,6 @@
 {
   "name": "@wyocode/testmon-mcp",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Model Context Protocol server for TestMonitor — author acceptance tests and read UAT feedback from Claude/Copilot.",
   "license": "MIT",
   "type": "module",
@@ -54,6 +54,7 @@
   },
   "homepage": "https://github.com/wyocode/testmon-mcp#readme",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   }
 }
